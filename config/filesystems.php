@@ -62,6 +62,8 @@ return [
 
     ],
 
+    'screenshots_disk' => env('SCREENSHOTS_DISK', 'local'),
+
     /*
     |--------------------------------------------------------------------------
     | Symbolic Links

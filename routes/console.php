@@ -1,8 +1,10 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use App\Jobs\PruneOldCrawlRunsJob;
+use App\Jobs\WeeklySummaryJob;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+Schedule::command('watchdog:dispatch-crawls')->everyFifteenMinutes();
+Schedule::command('watchdog:dispatch-screenshots')->hourly();
+Schedule::job(new PruneOldCrawlRunsJob)->dailyAt('02:00');
+Schedule::job(new WeeklySummaryJob)->weeklyOn(1, '08:00');

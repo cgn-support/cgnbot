@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'siteshot' => [
+        'key' => env('SITESHOT_API_KEY'),
+    ],
+
 ];
