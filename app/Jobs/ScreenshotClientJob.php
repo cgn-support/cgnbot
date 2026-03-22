@@ -63,7 +63,7 @@ class ScreenshotClientJob implements ShouldQueue
 
                 $diffData = [];
                 if ($previousScreenshot) {
-                    $diffData = $this->computeDiff($previousScreenshot, $filePath, $disk);
+                    $diffData = $this->computeDiff($previousScreenshot, $filePath, $disk, $settings);
                 }
 
                 PageScreenshot::create(array_merge([
@@ -84,7 +84,7 @@ class ScreenshotClientJob implements ShouldQueue
         $this->client->update(['last_screenshot_at' => now()]);
     }
 
-    private function computeDiff(PageScreenshot $previous, string $currentPath, string $disk): array
+    private function computeDiff(PageScreenshot $previous, string $currentPath, string $disk, array $settings): array
     {
         try {
             $diffService = new VisualDiffService;
@@ -93,6 +93,7 @@ class ScreenshotClientJob implements ShouldQueue
                 Storage::disk($previous->disk)->path($previous->file_path),
                 Storage::disk($disk)->path($currentPath),
                 $this->client->id,
+                $settings['visual_diff_exclusion_zones'] ?? [],
             );
         } catch (\Throwable $e) {
             Log::warning("Visual diff failed: {$e->getMessage()}");

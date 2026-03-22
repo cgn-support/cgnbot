@@ -25,12 +25,14 @@ class CrawlerSetting extends Model
         'alert_on_severity',
         'alert_min_consecutive_detections',
         'alert_min_confidence',
+        'default_visual_diff_exclusion_zones',
     ];
 
     protected function casts(): array
     {
         return [
             'alert_on_severity' => 'array',
+            'default_visual_diff_exclusion_zones' => 'array',
         ];
     }
 

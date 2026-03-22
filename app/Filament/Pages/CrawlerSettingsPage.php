@@ -97,6 +97,35 @@ class CrawlerSettingsPage extends Page implements HasForms
                             ->numeric(),
                     ]),
 
+                Section::make('Visual Diff Exclusion Zones')
+                    ->description('Rectangular regions to ignore during visual comparison (e.g., cookie banners, chat widgets)')
+                    ->schema([
+                        Forms\Components\Repeater::make('default_visual_diff_exclusion_zones')
+                            ->schema([
+                                Forms\Components\TextInput::make('label')
+                                    ->required(),
+                                Forms\Components\TextInput::make('x')
+                                    ->numeric()
+                                    ->required()
+                                    ->default(0),
+                                Forms\Components\TextInput::make('y')
+                                    ->numeric()
+                                    ->required()
+                                    ->default(0),
+                                Forms\Components\TextInput::make('width')
+                                    ->required()
+                                    ->default('100%')
+                                    ->helperText('Pixels or percentage (e.g., "100%")'),
+                                Forms\Components\TextInput::make('height')
+                                    ->numeric()
+                                    ->required()
+                                    ->default(100),
+                            ])
+                            ->columns(5)
+                            ->defaultItems(0)
+                            ->addActionLabel('Add exclusion zone'),
+                    ]),
+
                 Section::make('Slack Notifications')
                     ->columns(2)
                     ->schema([

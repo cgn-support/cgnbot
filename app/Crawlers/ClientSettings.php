@@ -23,6 +23,7 @@ class ClientSettings
             'alert_on_severity' => $global->alert_on_severity,
             'alert_min_consecutive_detections' => $global->alert_min_consecutive_detections ?? 2,
             'alert_min_confidence' => $global->alert_min_confidence ?? 70,
+            'visual_diff_exclusion_zones' => $global->default_visual_diff_exclusion_zones ?? [],
             'monitored_urls' => ['/'],
             'excluded_patterns' => [
                 '/wp-admin', '/wp-login', '/wp-json',
