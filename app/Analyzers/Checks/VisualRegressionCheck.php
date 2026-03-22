@@ -23,7 +23,7 @@ class VisualRegressionCheck implements CrawlCheck
             ->latest()
             ->first();
 
-        $sinceDate = $previousRun?->started_at ?? now()->subDay();
+        $sinceDate = $previousRun->started_at ?? now()->subDay();
 
         $screenshots = PageScreenshot::where('client_id', $client->id)
             ->where('captured_at', '>=', $sinceDate)
@@ -43,6 +43,7 @@ class VisualRegressionCheck implements CrawlCheck
                     'threshold' => $threshold,
                     'screenshot_url' => $screenshot->file_path,
                 ],
+                confidence: 70,
             ));
         }
 

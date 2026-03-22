@@ -14,12 +14,16 @@ class DuplicateTitleCheck implements CrawlCheck
     {
         $issues = collect();
 
-        $indexablePages = $currentPages->filter(fn ($page) => $page->is_indexable && ! empty($page->meta_title));
+        $minDuplicates = $settings['duplicate_title_threshold'] ?? 3;
+
+        $indexablePages = $currentPages
+            ->filter(fn ($page) => $page->is_indexable && ! empty($page->meta_title))
+            ->reject(fn ($page) => preg_match('#/page/\d+/?$#', $page->url));
 
         $grouped = $indexablePages->groupBy('meta_title');
 
         foreach ($grouped as $title => $pages) {
-            if ($pages->count() >= 3) {
+            if ($pages->count() >= $minDuplicates) {
                 foreach ($pages as $page) {
                     $issues->push($this->issue(
                         $crawlRun,
@@ -28,6 +32,7 @@ class DuplicateTitleCheck implements CrawlCheck
                         'DuplicateTitleCheck',
                         'warning',
                         ['title' => $title, 'shared_with_count' => $pages->count()],
+                        confidence: 85,
                     ));
                 }
             }

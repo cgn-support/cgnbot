@@ -31,6 +31,7 @@ class SiteWideNoindexCheck implements CrawlCheck
                 'SiteWideNoindexCheck',
                 'critical',
                 ['noindex_ratio' => round($ratio, 2), 'pages_checked' => $totalPages],
+                confidence: 95,
             ));
         }
 

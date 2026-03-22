@@ -9,6 +9,7 @@ use App\Models\Client;
 use App\Models\CrawlRun;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Support\Facades\Log;
 use Spatie\Crawler\Crawler;
 
 class CrawlClientJob implements ShouldQueue
@@ -29,6 +30,15 @@ class CrawlClientJob implements ShouldQueue
     public function handle(): void
     {
         $settings = ClientSettings::for($this->client);
+
+        Log::info("Crawl starting for {$this->client->name}", [
+            'client_id' => $this->client->id,
+            'domain' => $this->client->resolvedDomain(),
+            'max_depth' => $settings['max_depth'],
+            'crawl_limit' => $settings['crawl_limit'],
+            'concurrency' => $settings['concurrency'],
+            'manual' => $this->triggeredManually,
+        ]);
 
         $run = CrawlRun::create([
             'client_id' => $this->client->id,

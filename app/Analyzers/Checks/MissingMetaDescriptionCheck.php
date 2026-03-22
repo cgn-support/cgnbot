@@ -23,6 +23,7 @@ class MissingMetaDescriptionCheck implements CrawlCheck
                     $page->url,
                     'MissingMetaDescriptionCheck',
                     'warning',
+                    confidence: 70,
                 ));
             });
 

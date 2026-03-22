@@ -24,6 +24,7 @@ class TitleTooLongCheck implements CrawlCheck
                     'TitleTooLongCheck',
                     'info',
                     ['length' => $page->meta_title_length, 'title' => $page->meta_title],
+                    confidence: 85,
                 ));
             });
 

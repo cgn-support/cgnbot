@@ -24,6 +24,7 @@ class BrokenLinksCheck implements CrawlCheck
                 'BrokenLinksCheck',
                 $severity,
                 ['status_code' => $page->status_code],
+                confidence: 100,
             ));
         });
 

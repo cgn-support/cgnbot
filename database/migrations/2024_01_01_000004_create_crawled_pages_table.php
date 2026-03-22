@@ -43,7 +43,9 @@ return new class extends Migration
             $table->index(['crawl_run_id', 'status_code']);
         });
 
-        DB::statement('ALTER TABLE crawled_pages ADD INDEX crawled_pages_client_url_index (client_id, url(255))');
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement('ALTER TABLE crawled_pages ADD INDEX crawled_pages_client_url_index (client_id, url(255))');
+        }
     }
 
     public function down(): void

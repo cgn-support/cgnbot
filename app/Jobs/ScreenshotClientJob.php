@@ -8,16 +8,16 @@ use App\Models\PageScreenshot;
 use App\Services\VisualDiffService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Spatie\Browsershot\Browsershot;
 
 class ScreenshotClientJob implements ShouldQueue
 {
     use Queueable;
 
-    public int $timeout = 300;
+    public int $timeout = 600;
 
     public int $tries = 2;
 
@@ -30,14 +30,7 @@ class ScreenshotClientJob implements ShouldQueue
     public function handle(): void
     {
         $settings = ClientSettings::for($this->client);
-        $apiKey = config('services.siteshot.key');
         $disk = config('filesystems.screenshots_disk', 'local');
-
-        if (empty($apiKey)) {
-            Log::warning("SiteShot API key not configured, skipping screenshots for {$this->client->name}");
-
-            return;
-        }
 
         $monitoredUrls = $settings['monitored_urls'] ?? ['/'];
 
@@ -48,22 +41,20 @@ class ScreenshotClientJob implements ShouldQueue
                 $date = now()->format('Y-m-d');
                 $filePath = "screenshots/client-{$this->client->id}/{$slug}/{$date}.jpg";
 
-                $response = Http::get('https://api.siteshot.app/v1/screenshot', [
-                    'token' => $apiKey,
-                    'url' => $fullUrl,
-                    'width' => 1440,
-                    'full_page' => 1,
-                    'format' => 'jpg',
-                    'quality' => 85,
-                ]);
+                $absolutePath = Storage::disk($disk)->path($filePath);
+                $directory = dirname($absolutePath);
 
-                if ($response->failed()) {
-                    Log::warning("Screenshot failed for {$fullUrl}: HTTP {$response->status()}");
-
-                    continue;
+                if (! is_dir($directory)) {
+                    mkdir($directory, 0755, true);
                 }
 
-                Storage::disk($disk)->put($filePath, $response->body());
+                Browsershot::url($fullUrl)
+                    ->windowSize(1440, 900)
+                    ->fullPage()
+                    ->timeout(30)
+                    ->waitUntilNetworkIdle()
+                    ->setScreenshotType('jpeg', 85)
+                    ->save($absolutePath);
 
                 $previousScreenshot = PageScreenshot::where('client_id', $this->client->id)
                     ->whereRaw('url = ?', [$fullUrl])

@@ -6,6 +6,7 @@ use App\Filament\Resources\ClientResource\Pages;
 use App\Jobs\CrawlClientJob;
 use App\Models\Client;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms;
@@ -140,6 +141,18 @@ class ClientResource extends Resource
                     }),
                 EditAction::make(),
                 ViewAction::make(),
+            ])
+            ->bulkActions([
+                BulkAction::make('crawl_selected')
+                    ->label('Crawl Selected')
+                    ->icon('heroicon-o-play')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->action(function ($records) {
+                        $records->each(fn (Client $client) => CrawlClientJob::dispatch($client, triggeredManually: true));
+                        Notification::make()->title("Crawl dispatched for {$records->count()} client(s)")->success()->send();
+                    })
+                    ->deselectRecordsAfterCompletion(),
             ]);
     }
 

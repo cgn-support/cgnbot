@@ -31,6 +31,7 @@ class NewPagesDetectedCheck implements CrawlCheck
                     $page->url,
                     'NewPagesDetectedCheck',
                     'info',
+                    confidence: 100,
                 ));
             });
 

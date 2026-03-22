@@ -21,6 +21,8 @@ class ClientSettings
             'thin_content_threshold' => $global->default_thin_content_threshold,
             'visual_diff_threshold' => $global->default_visual_diff_threshold,
             'alert_on_severity' => $global->alert_on_severity,
+            'alert_min_consecutive_detections' => $global->alert_min_consecutive_detections ?? 2,
+            'alert_min_confidence' => $global->alert_min_confidence ?? 70,
             'monitored_urls' => ['/'],
             'excluded_patterns' => [
                 '/wp-admin', '/wp-login', '/wp-json',

@@ -31,32 +31,36 @@ class ClientCrawlObserver extends CrawlObserver
         $transferStats = $response->transferStats();
         $responseTimeMs = $transferStats ? (int) round($transferStats->transferTimeInMs() ?? 0) : 0;
 
-        CrawledPage::create([
-            'crawl_run_id' => $this->crawlRun->id,
-            'client_id' => $this->clientId,
-            'url' => $url,
-            'status_code' => $statusCode,
-            'redirect_url' => $response->wasRedirected() ? $response->redirectHistory()[0] ?? null : null,
-            'redirect_count' => count($response->redirectHistory()),
-            'canonical_url' => $this->extractCanonical($dom),
-            'canonical_is_self' => $this->extractCanonicalIsSelf($dom, $url),
-            'meta_title' => $this->extractTitle($dom),
-            'meta_title_length' => mb_strlen($this->extractTitle($dom) ?? ''),
-            'meta_description' => $this->extractMetaDescription($dom),
-            'meta_description_length' => mb_strlen($this->extractMetaDescription($dom) ?? ''),
-            'h1' => $this->extractH1($dom),
-            'h1_count' => $this->countH1($dom),
-            'word_count' => $this->countWords($html),
-            'is_indexable' => $this->extractIndexability($dom),
-            'has_schema_markup' => $this->hasSchemaMarkup($dom, $html),
-            'schema_types' => $this->extractSchemaTypes($dom, $html),
-            'internal_links_count' => $this->countLinks($dom, true),
-            'external_links_count' => $this->countLinks($dom, false),
-            'response_time_ms' => $responseTimeMs,
-            'page_hash' => hash('sha256', $html),
-            'first_seen_at' => now(),
-            'last_seen_at' => now(),
-        ]);
+        CrawledPage::updateOrCreate(
+            [
+                'crawl_run_id' => $this->crawlRun->id,
+                'url' => $url,
+            ],
+            [
+                'client_id' => $this->clientId,
+                'status_code' => $statusCode,
+                'redirect_url' => $response->wasRedirected() ? collect($response->redirectHistory())->last() : null,
+                'redirect_count' => count($response->redirectHistory()),
+                'canonical_url' => $this->extractCanonical($dom),
+                'canonical_is_self' => $this->extractCanonicalIsSelf($dom, $url),
+                'meta_title' => $this->extractTitle($dom),
+                'meta_title_length' => mb_strlen($this->extractTitle($dom) ?? ''),
+                'meta_description' => $this->extractMetaDescription($dom),
+                'meta_description_length' => mb_strlen($this->extractMetaDescription($dom) ?? ''),
+                'h1' => $this->extractH1($dom),
+                'h1_count' => $this->countH1($dom),
+                'word_count' => $this->countWords($html),
+                'is_indexable' => $this->extractIndexability($dom),
+                'has_schema_markup' => $this->hasSchemaMarkup($dom, $html),
+                'schema_types' => $this->extractSchemaTypes($dom, $html),
+                'internal_links_count' => $this->countLinks($dom, true),
+                'external_links_count' => $this->countLinks($dom, false),
+                'response_time_ms' => $responseTimeMs,
+                'page_hash' => hash('sha256', $html),
+                'first_seen_at' => now(),
+                'last_seen_at' => now(),
+            ],
+        );
 
         $this->pagesCrawled++;
     }
@@ -75,14 +79,18 @@ class ClientCrawlObserver extends CrawlObserver
             $statusCode = $requestException->getResponse()->getStatusCode();
         }
 
-        CrawledPage::create([
-            'crawl_run_id' => $this->crawlRun->id,
-            'client_id' => $this->clientId,
-            'url' => $url,
-            'status_code' => $statusCode,
-            'first_seen_at' => now(),
-            'last_seen_at' => now(),
-        ]);
+        CrawledPage::updateOrCreate(
+            [
+                'crawl_run_id' => $this->crawlRun->id,
+                'url' => $url,
+            ],
+            [
+                'client_id' => $this->clientId,
+                'status_code' => $statusCode,
+                'first_seen_at' => now(),
+                'last_seen_at' => now(),
+            ],
+        );
 
         $this->pagesCrawled++;
     }
@@ -187,7 +195,7 @@ class ClientCrawlObserver extends CrawlObserver
 
         $dom->filter('[itemtype]')->each(function (Crawler $node) use (&$types) {
             $itemtype = $node->attr('itemtype') ?? '';
-            if (preg_match('/schema\.org\/(\w+)/', $itemtype, $matches)) {
+            if (preg_match('#schema\.org/([A-Za-z]+)#', $itemtype, $matches)) {
                 $types[] = $matches[1];
             }
         });
@@ -250,7 +258,27 @@ class ClientCrawlObserver extends CrawlObserver
 
     private function countWords(string $html): int
     {
-        $text = strip_tags($html);
+        $html = preg_replace('/<script\b[^>]*>.*?<\/script>/si', '', $html);
+        $html = preg_replace('/<style\b[^>]*>.*?<\/style>/si', '', $html);
+        $html = preg_replace('/<nav\b[^>]*>.*?<\/nav>/si', '', $html);
+        $html = preg_replace('/<footer\b[^>]*>.*?<\/footer>/si', '', $html);
+        $html = preg_replace('/<header\b[^>]*>.*?<\/header>/si', '', $html);
+
+        $dom = new Crawler($html);
+
+        $mainContent = null;
+        foreach (['main', 'article', '[role="main"]'] as $selector) {
+            try {
+                $node = $dom->filter($selector)->first();
+                if ($node->count() > 0) {
+                    $mainContent = $node->text();
+                    break;
+                }
+            } catch (\Exception) {
+            }
+        }
+
+        $text = $mainContent ?? strip_tags($html);
         $text = preg_replace('/\s+/', ' ', $text);
 
         return str_word_count(trim($text));

@@ -23,6 +23,7 @@ class MissingH1Check implements CrawlCheck
                     $page->url,
                     'MissingH1Check',
                     'warning',
+                    confidence: 60,
                 ));
             });
 

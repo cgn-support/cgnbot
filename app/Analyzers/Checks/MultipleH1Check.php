@@ -24,6 +24,7 @@ class MultipleH1Check implements CrawlCheck
                     'MultipleH1Check',
                     'info',
                     ['h1_count' => $page->h1_count],
+                    confidence: 60,
                 ));
             });
 

@@ -31,6 +31,7 @@ class NoindexOnMonitoredUrlCheck implements CrawlCheck
                     'NoindexOnMonitoredUrlCheck',
                     'critical',
                     ['monitored_url' => $path],
+                    confidence: 95,
                 ));
             }
         }

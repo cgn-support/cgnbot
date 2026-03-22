@@ -3,8 +3,12 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\CrawlRunResource\Pages;
+use App\Jobs\CrawlClientJob;
+use App\Models\Client;
 use App\Models\CrawlRun;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
@@ -27,6 +31,7 @@ class CrawlRunResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('client'))
             ->columns([
                 Tables\Columns\TextColumn::make('client.name')
                     ->sortable()
@@ -72,6 +77,18 @@ class CrawlRunResource extends Resource
             ])
             ->actions([
                 ViewAction::make(),
+                Action::make('retry')
+                    ->label('Retry')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('warning')
+                    ->visible(fn (CrawlRun $record) => $record->status === 'failed')
+                    ->requiresConfirmation()
+                    ->action(function (CrawlRun $record) {
+                        /** @var Client $client */
+                        $client = $record->client;
+                        CrawlClientJob::dispatch($client, triggeredManually: true);
+                        Notification::make()->title('Crawl re-queued for '.$client->name)->success()->send();
+                    }),
             ]);
     }
 

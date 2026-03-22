@@ -23,6 +23,8 @@ class CrawlerSetting extends Model
         'slack_webhook_url',
         'slack_default_channel',
         'alert_on_severity',
+        'alert_min_consecutive_detections',
+        'alert_min_confidence',
     ];
 
     protected function casts(): array
@@ -32,8 +34,8 @@ class CrawlerSetting extends Model
         ];
     }
 
-    public static function current(): static
+    public static function current(): self
     {
-        return static::first() ?? static::create([]);
+        return self::first() ?? self::create([]);
     }
 }

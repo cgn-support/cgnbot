@@ -14,6 +14,7 @@ trait BuildsIssues
         string $issueType,
         string $severity,
         array $context = [],
+        int $confidence = 100,
     ): array {
         return [
             'client_id' => $client->id,
@@ -21,7 +22,8 @@ trait BuildsIssues
             'url' => $url,
             'issue_type' => $issueType,
             'severity' => $severity,
-            'context' => json_encode($context),
+            'context' => $context,
+            'confidence' => $confidence,
             'detected_at' => now(),
             'created_at' => now(),
             'updated_at' => now(),

@@ -33,10 +33,10 @@ class WeeklySummaryJob implements ShouldQueue
             ->where('resolved_at', '>=', now()->subWeek())
             ->count();
         $clientsWithCritical = Client::active()
-            ->whereHas('crawlIssues', fn ($q) => $q->open()->critical())
+            ->whereHas('crawlIssues', fn ($q) => $q->whereNull('resolved_at')->where('severity', 'critical'))
             ->count();
         $cleanClients = $totalActive - Client::active()
-            ->whereHas('crawlIssues', fn ($q) => $q->open())
+            ->whereHas('crawlIssues', fn ($q) => $q->whereNull('resolved_at'))
             ->count();
 
         $blocks = [

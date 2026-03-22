@@ -5,9 +5,11 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\CrawlIssueResource\Pages;
 use App\Models\CrawlIssue;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Cache;
 
 class CrawlIssueResource extends Resource
 {
@@ -28,7 +30,9 @@ class CrawlIssueResource extends Resource
 
     public static function getNavigationBadge(): ?string
     {
-        $count = CrawlIssue::open()->critical()->count();
+        $count = Cache::remember('crawl_issues_critical_count', 300, function () {
+            return CrawlIssue::open()->critical()->count();
+        });
 
         return $count > 0 ? (string) $count : null;
     }
@@ -41,6 +45,7 @@ class CrawlIssueResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn ($query) => $query->with('client'))
             ->columns([
                 Tables\Columns\TextColumn::make('client.name')
                     ->sortable()
@@ -93,6 +98,15 @@ class CrawlIssueResource extends Resource
                     ->color('success')
                     ->visible(fn (CrawlIssue $record) => $record->resolved_at === null)
                     ->action(fn (CrawlIssue $record) => $record->markResolved()),
+            ])
+            ->bulkActions([
+                BulkAction::make('bulk_resolve')
+                    ->label('Mark Resolved')
+                    ->icon('heroicon-o-check')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->action(fn ($records) => $records->each->markResolved())
+                    ->deselectRecordsAfterCompletion(),
             ]);
     }
 

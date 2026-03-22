@@ -10,6 +10,7 @@ use App\Models\CrawlRun;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class AlertCriticalIssuesJob implements ShouldQueue
 {
@@ -24,13 +25,36 @@ class AlertCriticalIssuesJob implements ShouldQueue
         $this->queue = 'default';
     }
 
+    /**
+     * Alert threshold rules:
+     * 1. Recurring issues: detected >= N consecutive times AND confidence >= M% (configurable)
+     * 2. New critical issues: severity=critical AND confidence >= 80% (immediate alert)
+     *
+     * Issues already alerted within the last 24 hours are skipped to prevent Slack noise.
+     */
     public function handle(): void
     {
         $settings = ClientSettings::for($this->client);
 
+        $minConsecutive = $settings['alert_min_consecutive_detections'] ?? 2;
+        $minConfidence = $settings['alert_min_confidence'] ?? 70;
+
         $issues = CrawlIssue::where('crawl_run_id', $this->crawlRun->id)
             ->whereIn('severity', $settings['alert_on_severity'])
-            ->whereNull('alerted_at')
+            ->where(function ($query) {
+                // Not yet alerted, or last alerted more than 24 hours ago
+                $query->whereNull('alerted_at')
+                    ->orWhere('alerted_at', '<', now()->subHours(24));
+            })
+            ->where(function ($query) use ($minConsecutive, $minConfidence) {
+                $query->where(function ($q) use ($minConsecutive, $minConfidence) {
+                    $q->where('consecutive_detections', '>=', $minConsecutive)
+                        ->where('confidence', '>=', $minConfidence);
+                })->orWhere(function ($q) {
+                    $q->where('severity', 'critical')
+                        ->where('confidence', '>=', 80);
+                });
+            })
             ->get();
 
         if ($issues->isEmpty()) {
@@ -47,8 +71,9 @@ class AlertCriticalIssuesJob implements ShouldQueue
 
         $issueLines = $issues->map(function ($issue) {
             $emoji = $issue->severity === 'critical' ? ':red_circle:' : ':warning:';
+            $confidence = "({$issue->confidence}% confidence)";
 
-            return "{$emoji} *{$issue->issue_type}* — `{$issue->url}`";
+            return "{$emoji} *{$issue->issue_type}* — `{$issue->url}` {$confidence}";
         })->join("\n");
 
         $domain = $this->client->resolvedDomain();
@@ -75,7 +100,7 @@ class AlertCriticalIssuesJob implements ShouldQueue
                 'elements' => [
                     [
                         'type' => 'mrkdwn',
-                        'text' => "Crawl run #{$this->crawlRun->id} — ".$this->crawlRun->started_at?->format('M j, Y g:i a'),
+                        'text' => "Crawl run #{$this->crawlRun->id} — ".($this->crawlRun->started_at ? $this->crawlRun->started_at->format('M j, Y g:i a') : 'unknown'),
                     ],
                 ],
             ],
@@ -87,8 +112,16 @@ class AlertCriticalIssuesJob implements ShouldQueue
             $payload['channel'] = $channel;
         }
 
-        Http::post($global->slack_webhook_url, $payload);
+        try {
+            $response = Http::retry(3, 100)->post($global->slack_webhook_url, $payload);
 
-        $issues->each->update(['alerted_at' => now()]);
+            if ($response->successful()) {
+                $issues->each->update(['alerted_at' => now()]);
+            } else {
+                Log::error("Slack webhook returned {$response->status()} for client {$this->client->name}");
+            }
+        } catch (\Throwable $e) {
+            Log::error("Slack webhook failed for client {$this->client->name}: {$e->getMessage()}");
+        }
     }
 }

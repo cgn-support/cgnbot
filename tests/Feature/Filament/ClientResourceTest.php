@@ -33,12 +33,10 @@ it('renders the create form', function () {
 
 it('can create a client', function () {
     livewire(CreateClient::class)
-        ->fillForm([
-            'name' => 'Acme Remodeling',
-            'slug' => 'acme-remodeling',
-            'domain' => 'https://acmeremodeling.com',
-            'is_active' => true,
-        ])
+        ->set('data.name', 'Acme Remodeling')
+        ->set('data.slug', 'acme-remodeling')
+        ->set('data.domain', 'https://acmeremodeling.com')
+        ->set('data.is_active', true)
         ->call('create')
         ->assertHasNoFormErrors();
 
@@ -58,9 +56,7 @@ it('can update a client', function () {
     $client = Client::factory()->create();
 
     livewire(EditClient::class, ['record' => $client->getRouteKey()])
-        ->fillForm([
-            'name' => 'Updated Name',
-        ])
+        ->set('data.name', 'Updated Name')
         ->call('save')
         ->assertHasNoFormErrors();
 

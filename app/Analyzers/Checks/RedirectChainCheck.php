@@ -24,6 +24,7 @@ class RedirectChainCheck implements CrawlCheck
                     'RedirectChainCheck',
                     'warning',
                     ['redirect_count' => $page->redirect_count, 'final_url' => $page->redirect_url],
+                    confidence: 95,
                 ));
             });
 

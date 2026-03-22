@@ -8,6 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @property array<string, mixed>|null $settings
+ *
+ * @method static Builder<static> active()
+ * @method static Builder<static> dueForCrawl()
+ * @method static Builder<static> dueForScreenshot()
+ */
 class Client extends Model
 {
     use HasFactory;
@@ -73,7 +80,7 @@ class Client extends Model
     {
         $defaultHours = CrawlerSetting::current()->default_crawl_frequency_hours;
 
-        return $query->active()
+        return $query->where('is_active', true)
             ->where(function (Builder $q) use ($defaultHours) {
                 $q->whereNull('last_crawled_at')
                     ->orWhereRaw(
@@ -87,7 +94,7 @@ class Client extends Model
     {
         $defaultHours = CrawlerSetting::current()->default_screenshot_frequency_hours;
 
-        return $query->active()
+        return $query->where('is_active', true)
             ->where(function (Builder $q) use ($defaultHours) {
                 $q->whereNull('last_screenshot_at')
                     ->orWhereRaw(

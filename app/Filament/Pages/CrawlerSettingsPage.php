@@ -5,13 +5,20 @@ namespace App\Filament\Pages;
 use App\Models\CrawlerSetting;
 use Filament\Actions\Action;
 use Filament\Forms;
+use Filament\Forms\Concerns\InteractsWithForms;
+use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
-class CrawlerSettingsPage extends Page
+/**
+ * @property Schema $form
+ */
+class CrawlerSettingsPage extends Page implements HasForms
 {
+    use InteractsWithForms;
+
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cog-6-tooth';
 
     protected static string|\UnitEnum|null $navigationGroup = 'Configuration';
@@ -107,6 +114,20 @@ class CrawlerSettingsPage extends Page
                                 'warning' => 'Warning',
                                 'info' => 'Info',
                             ]),
+                        Forms\Components\TextInput::make('alert_min_consecutive_detections')
+                            ->label('Min Consecutive Detections')
+                            ->helperText('Issues must be detected this many consecutive crawls before alerting (critical issues override with 1)')
+                            ->required()
+                            ->numeric()
+                            ->minValue(1)
+                            ->maxValue(10),
+                        Forms\Components\TextInput::make('alert_min_confidence')
+                            ->label('Min Confidence (%)')
+                            ->helperText('Issues below this confidence threshold will not trigger alerts')
+                            ->required()
+                            ->numeric()
+                            ->minValue(0)
+                            ->maxValue(100),
                     ]),
             ])
             ->statePath('data');

@@ -48,7 +48,9 @@ class ViewClient extends ViewRecord
                 ->color('success')
                 ->requiresConfirmation()
                 ->action(function () {
-                    CrawlClientJob::dispatch($this->record, triggeredManually: true);
+                    /** @var Client $client */
+                    $client = $this->record;
+                    CrawlClientJob::dispatch($client, triggeredManually: true);
                     Notification::make()->title('Crawl dispatched')->success()->send();
                 }),
             Actions\EditAction::make(),

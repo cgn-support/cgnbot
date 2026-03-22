@@ -25,6 +25,7 @@ class ThinContentCheck implements CrawlCheck
                     'ThinContentCheck',
                     'warning',
                     ['word_count' => $page->word_count, 'threshold' => $threshold],
+                    confidence: 50,
                 ));
             });
 

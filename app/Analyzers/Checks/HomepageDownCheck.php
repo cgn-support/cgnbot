@@ -18,10 +18,20 @@ class HomepageDownCheck implements CrawlCheck
         $homepage = $currentPages->first(fn ($page) => rtrim($page->url, '/').'/' === $homepageUrl);
 
         if (! $homepage) {
-            $homepage = $currentPages->first();
+            $issues->push($this->issue(
+                $crawlRun,
+                $client,
+                $homepageUrl,
+                'HomepageMissingFromCrawl',
+                'critical',
+                ['reason' => 'Homepage URL not found in crawl results'],
+                confidence: 80,
+            ));
+
+            return $issues;
         }
 
-        if ($homepage && ($homepage->status_code < 200 || $homepage->status_code >= 300)) {
+        if ($homepage->status_code < 200 || $homepage->status_code >= 300) {
             $issues->push($this->issue(
                 $crawlRun,
                 $client,
@@ -29,6 +39,7 @@ class HomepageDownCheck implements CrawlCheck
                 'HomepageDownCheck',
                 'critical',
                 ['status_code' => $homepage->status_code],
+                confidence: 100,
             ));
         }
 

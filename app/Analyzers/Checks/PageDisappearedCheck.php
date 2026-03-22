@@ -18,13 +18,13 @@ class PageDisappearedCheck implements CrawlCheck
             return $issues;
         }
 
-        $currentUrls = $currentPages->pluck('url')->map(fn ($url) => rtrim($url, '/'))->toArray();
+        $currentUrls = $currentPages->pluck('url')->map(fn ($url) => $this->normalizeUrl($url))->toArray();
         $currentUrlMap = array_flip($currentUrls);
 
         $previousPages
             ->filter(fn ($page) => $page->is_indexable && $page->status_code < 400)
             ->each(function ($page) use ($crawlRun, $client, $issues, $currentPages, $currentUrlMap) {
-                $normalizedUrl = rtrim($page->url, '/');
+                $normalizedUrl = $this->normalizeUrl($page->url);
 
                 if (! isset($currentUrlMap[$normalizedUrl])) {
                     $issues->push($this->issue(
@@ -34,12 +34,13 @@ class PageDisappearedCheck implements CrawlCheck
                         'PageDisappearedCheck',
                         'warning',
                         ['last_seen_status_code' => $page->status_code],
+                        confidence: 80,
                     ));
 
                     return;
                 }
 
-                $currentPage = $currentPages->first(fn ($p) => rtrim($p->url, '/') === $normalizedUrl);
+                $currentPage = $currentPages->first(fn ($p) => $this->normalizeUrl($p->url) === $normalizedUrl);
 
                 if ($currentPage && $currentPage->status_code === 404) {
                     $issues->push($this->issue(
@@ -49,10 +50,19 @@ class PageDisappearedCheck implements CrawlCheck
                         'PageDisappearedCheck',
                         'warning',
                         ['current_status_code' => 404],
+                        confidence: 80,
                     ));
                 }
             });
 
         return $issues;
+    }
+
+    private function normalizeUrl(string $url): string
+    {
+        $parsed = parse_url($url);
+        $path = rtrim($parsed['path'] ?? '/', '/');
+
+        return ($parsed['scheme'] ?? 'https').'://'.($parsed['host'] ?? '').$path;
     }
 }

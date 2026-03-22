@@ -24,6 +24,7 @@ class MissingTitleCheck implements CrawlCheck
                     $page->url,
                     'MissingTitleCheck',
                     'warning',
+                    confidence: 70,
                 ));
             });
 

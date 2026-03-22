@@ -55,9 +55,17 @@ class IssueAnalyzer
 
     public function run(CrawlRun $crawlRun, Client $client, Collection $currentPages, Collection $previousPages, array $settings): Collection
     {
+        return $this->runChecks($crawlRun, $client, $currentPages, $previousPages, $settings, $this->checks());
+    }
+
+    /**
+     * @param  array<class-string<CrawlCheck>>  $checkClasses
+     */
+    public function runChecks(CrawlRun $crawlRun, Client $client, Collection $currentPages, Collection $previousPages, array $settings, array $checkClasses): Collection
+    {
         $allIssues = collect();
 
-        foreach ($this->checks() as $checkClass) {
+        foreach ($checkClasses as $checkClass) {
             try {
                 $check = new $checkClass;
                 $issues = $check->run($crawlRun, $client, $currentPages, $previousPages, $settings);

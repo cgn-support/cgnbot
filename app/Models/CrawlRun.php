@@ -6,7 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 
+/**
+ * @property Carbon|null $started_at
+ * @property Carbon|null $finished_at
+ */
 class CrawlRun extends Model
 {
     use HasFactory;
@@ -23,6 +28,7 @@ class CrawlRun extends Model
         'started_at',
         'finished_at',
         'error_message',
+        'context',
     ];
 
     protected function casts(): array
@@ -31,6 +37,7 @@ class CrawlRun extends Model
             'triggered_manually' => 'boolean',
             'started_at' => 'datetime',
             'finished_at' => 'datetime',
+            'context' => 'array',
         ];
     }
 
@@ -76,10 +83,10 @@ class CrawlRun extends Model
 
     public function durationSeconds(): ?int
     {
-        if (! $this->started_at || ! $this->finished_at) {
+        if ($this->started_at === null || $this->finished_at === null) {
             return null;
         }
 
-        return $this->started_at->diffInSeconds($this->finished_at);
+        return (int) $this->started_at->diffInSeconds($this->finished_at);
     }
 }
