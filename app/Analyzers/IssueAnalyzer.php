@@ -4,6 +4,7 @@ namespace App\Analyzers;
 
 use App\Analyzers\Checks\BrokenLinksCheck;
 use App\Analyzers\Checks\CanonicalMismatchCheck;
+use App\Analyzers\Checks\ContentChangedCheck;
 use App\Analyzers\Checks\CrawlCheck;
 use App\Analyzers\Checks\DuplicateTitleCheck;
 use App\Analyzers\Checks\HomepageDownCheck;
@@ -50,6 +51,7 @@ class IssueAnalyzer
             PageDisappearedCheck::class,
             NewPagesDetectedCheck::class,
             VisualRegressionCheck::class,
+            ContentChangedCheck::class,
         ];
     }
 

@@ -39,4 +39,8 @@ return [
         'key' => env('SITESHOT_API_KEY'),
     ],
 
+    'api' => [
+        'token' => env('API_TOKEN'),
+    ],
+
 ];

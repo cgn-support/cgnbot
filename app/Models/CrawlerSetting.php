@@ -22,6 +22,7 @@ class CrawlerSetting extends Model
         'resolved_issues_retention_days',
         'slack_webhook_url',
         'slack_default_channel',
+        'webhook_url',
         'alert_on_severity',
         'alert_min_consecutive_detections',
         'alert_min_confidence',

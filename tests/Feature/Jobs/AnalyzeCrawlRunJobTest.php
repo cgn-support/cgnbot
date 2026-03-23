@@ -9,6 +9,7 @@ use App\Models\CrawlerSetting;
 use App\Models\CrawlIssue;
 use App\Models\CrawlRun;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Event;
 
 beforeEach(function () {
     CrawlerSetting::query()->delete();
@@ -180,6 +181,7 @@ it('dispatches AlertCriticalIssuesJob and VerifyLowConfidenceIssuesJob on health
 
 it('runs limited analysis when health gate fails', function () {
     Bus::fake();
+    Event::fake();
 
     $previousRun = CrawlRun::factory()->create([
         'client_id' => $this->client->id,

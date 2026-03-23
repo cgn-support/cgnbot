@@ -2,6 +2,7 @@
 
 use App\Analyzers\Checks\BrokenLinksCheck;
 use App\Analyzers\Checks\CanonicalMismatchCheck;
+use App\Analyzers\Checks\ContentChangedCheck;
 use App\Analyzers\Checks\DuplicateTitleCheck;
 use App\Analyzers\Checks\HomepageDownCheck;
 use App\Analyzers\Checks\MissingH1Check;
@@ -106,7 +107,7 @@ it('BrokenLinksCheck flags nothing when all pages return 200', function () {
     expect($issues)->toBeEmpty();
 });
 
-it('BrokenLinksCheck flags warning for 404 page', function () {
+it('BrokenLinksCheck flags warning for internal 404 page', function () {
     $pages = collect([
         CrawledPage::factory()->create([
             'crawl_run_id' => $this->crawlRun->id,
@@ -121,9 +122,10 @@ it('BrokenLinksCheck flags warning for 404 page', function () {
     expect($issues)->toHaveCount(1);
     expect($issues->first()['severity'])->toBe('warning');
     expect($issues->first()['issue_type'])->toBe('BrokenLinksCheck');
+    expect($issues->first()['context']['is_internal'])->toBeTrue();
 });
 
-it('BrokenLinksCheck flags critical for 503 page', function () {
+it('BrokenLinksCheck flags critical for internal 503 page', function () {
     $pages = collect([
         CrawledPage::factory()->create([
             'crawl_run_id' => $this->crawlRun->id,
@@ -138,6 +140,41 @@ it('BrokenLinksCheck flags critical for 503 page', function () {
     expect($issues)->toHaveCount(1);
     expect($issues->first()['severity'])->toBe('critical');
     expect($issues->first()['issue_type'])->toBe('BrokenLinksCheck');
+    expect($issues->first()['context']['is_internal'])->toBeTrue();
+});
+
+it('BrokenLinksCheck flags info for external 404 page', function () {
+    $pages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $this->crawlRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://other-site.com/missing',
+            'status_code' => 404,
+        ]),
+    ]);
+
+    $issues = (new BrokenLinksCheck)->run($this->crawlRun, $this->client, $pages, collect(), $this->settings);
+
+    expect($issues)->toHaveCount(1);
+    expect($issues->first()['severity'])->toBe('info');
+    expect($issues->first()['context']['is_internal'])->toBeFalse();
+});
+
+it('BrokenLinksCheck flags warning for external 503 page', function () {
+    $pages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $this->crawlRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://other-site.com/error',
+            'status_code' => 503,
+        ]),
+    ]);
+
+    $issues = (new BrokenLinksCheck)->run($this->crawlRun, $this->client, $pages, collect(), $this->settings);
+
+    expect($issues)->toHaveCount(1);
+    expect($issues->first()['severity'])->toBe('warning');
+    expect($issues->first()['context']['is_internal'])->toBeFalse();
 });
 
 // --- NoindexOnMonitoredUrlCheck ---
@@ -1068,6 +1105,130 @@ it('VisualRegressionCheck ignores screenshots below threshold', function () {
     ]);
 
     $issues = (new VisualRegressionCheck)->run($this->crawlRun, $this->client, collect(), collect(), $this->settings);
+
+    expect($issues)->toBeEmpty();
+});
+
+// --- ContentChangedCheck ---
+
+it('ContentChangedCheck flags nothing when content is unchanged', function () {
+    $hash = hash('sha256', 'same content');
+
+    $currentPages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $this->crawlRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://example.com/about',
+            'page_hash' => $hash,
+        ]),
+    ]);
+
+    $previousRun = CrawlRun::factory()->create(['client_id' => $this->client->id]);
+    $previousPages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $previousRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://example.com/about',
+            'page_hash' => $hash,
+        ]),
+    ]);
+
+    $issues = (new ContentChangedCheck)->run($this->crawlRun, $this->client, $currentPages, $previousPages, $this->settings);
+
+    expect($issues)->toBeEmpty();
+});
+
+it('ContentChangedCheck flags info issue when content has changed', function () {
+    $currentPages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $this->crawlRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://example.com/about',
+            'page_hash' => hash('sha256', 'new content'),
+        ]),
+    ]);
+
+    $previousRun = CrawlRun::factory()->create(['client_id' => $this->client->id]);
+    $previousPages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $previousRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://example.com/about',
+            'page_hash' => hash('sha256', 'old content'),
+        ]),
+    ]);
+
+    $issues = (new ContentChangedCheck)->run($this->crawlRun, $this->client, $currentPages, $previousPages, $this->settings);
+
+    expect($issues)->toHaveCount(1);
+    expect($issues->first()['severity'])->toBe('info');
+    expect($issues->first()['issue_type'])->toBe('ContentChangedCheck');
+    expect($issues->first()['confidence'])->toBe(90);
+    expect($issues->first()['context']['previous_hash'])->toBe(hash('sha256', 'old content'));
+    expect($issues->first()['context']['current_hash'])->toBe(hash('sha256', 'new content'));
+});
+
+it('ContentChangedCheck flags nothing when no previous pages exist', function () {
+    $currentPages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $this->crawlRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://example.com/about',
+            'page_hash' => hash('sha256', 'some content'),
+        ]),
+    ]);
+
+    $issues = (new ContentChangedCheck)->run($this->crawlRun, $this->client, $currentPages, collect(), $this->settings);
+
+    expect($issues)->toBeEmpty();
+});
+
+it('ContentChangedCheck flags nothing when current page_hash is null', function () {
+    $currentPages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $this->crawlRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://example.com/about',
+            'page_hash' => null,
+        ]),
+    ]);
+
+    $previousRun = CrawlRun::factory()->create(['client_id' => $this->client->id]);
+    $previousPages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $previousRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://example.com/about',
+            'page_hash' => hash('sha256', 'old content'),
+        ]),
+    ]);
+
+    $issues = (new ContentChangedCheck)->run($this->crawlRun, $this->client, $currentPages, $previousPages, $this->settings);
+
+    expect($issues)->toBeEmpty();
+});
+
+it('ContentChangedCheck flags nothing when previous page_hash is null', function () {
+    $currentPages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $this->crawlRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://example.com/about',
+            'page_hash' => hash('sha256', 'new content'),
+        ]),
+    ]);
+
+    $previousRun = CrawlRun::factory()->create(['client_id' => $this->client->id]);
+    $previousPages = collect([
+        CrawledPage::factory()->create([
+            'crawl_run_id' => $previousRun->id,
+            'client_id' => $this->client->id,
+            'url' => 'https://example.com/about',
+            'page_hash' => null,
+        ]),
+    ]);
+
+    $issues = (new ContentChangedCheck)->run($this->crawlRun, $this->client, $currentPages, $previousPages, $this->settings);
 
     expect($issues)->toBeEmpty();
 });

@@ -5,6 +5,8 @@ namespace App\Jobs;
 use App\Crawlers\ClientCrawlObserver;
 use App\Crawlers\ClientCrawlProfile;
 use App\Crawlers\ClientSettings;
+use App\Events\CrawlCompleted;
+use App\Events\CrawlFailed;
 use App\Models\Client;
 use App\Models\CrawlRun;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -77,11 +79,15 @@ class CrawlClientJob implements ShouldQueue
 
             $this->client->update(['last_crawled_at' => now()]);
 
-            AnalyzeCrawlRunJob::dispatch($run, $this->client);
-        } catch (\Throwable $e) {
-            $run->markFailed($e->getMessage());
+            CrawlCompleted::dispatch($run, $this->client);
 
-            throw $e;
+            AnalyzeCrawlRunJob::dispatch($run, $this->client);
+        } catch (\Throwable $exception) {
+            $run->markFailed($exception->getMessage());
+
+            CrawlFailed::dispatch($run, $this->client, $exception->getMessage());
+
+            throw $exception;
         }
     }
 }

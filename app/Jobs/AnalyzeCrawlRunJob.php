@@ -4,6 +4,7 @@ namespace App\Jobs;
 
 use App\Analyzers\IssueAnalyzer;
 use App\Crawlers\ClientSettings;
+use App\Events\CriticalIssueDetected;
 use App\Models\Client;
 use App\Models\CrawledPage;
 use App\Models\CrawlIssue;
@@ -126,10 +127,14 @@ class AnalyzeCrawlRunJob implements ShouldQueue
                         'updated_at' => now(),
                     ]);
                 } else {
-                    CrawlIssue::create(array_merge($issueData, [
+                    $issue = CrawlIssue::create(array_merge($issueData, [
                         'consecutive_detections' => 1,
                         'first_detected_run_id' => $this->crawlRun->id,
                     ]));
+
+                    if ($issue->severity === 'critical') {
+                        CriticalIssueDetected::dispatch($issue, $this->crawlRun, $this->client);
+                    }
                 }
             }
 
