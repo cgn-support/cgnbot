@@ -74,6 +74,88 @@ it('filters client issues by severity', function () {
         ->assertJsonPath('data.0.severity', 'critical');
 });
 
+it('creates a single client', function () {
+    $response = $this->postJson('/api/clients', [
+        'name' => 'Acme Builders',
+        'domain' => 'https://acmebuilders.com',
+    ], ['Authorization' => 'Bearer test-token']);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.name', 'Acme Builders')
+        ->assertJsonPath('data.slug', 'acme-builders')
+        ->assertJsonPath('data.domain', 'https://acmebuilders.com');
+
+    $this->assertDatabaseHas('clients', [
+        'slug' => 'acme-builders',
+        'domain' => 'https://acmebuilders.com',
+        'is_active' => true,
+    ]);
+});
+
+it('creates a client with custom slug', function () {
+    $response = $this->postJson('/api/clients', [
+        'name' => 'Acme Builders',
+        'domain' => 'https://acmebuilders.com',
+        'slug' => 'acme-custom',
+    ], ['Authorization' => 'Bearer test-token']);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('data.slug', 'acme-custom');
+});
+
+it('rejects client creation with duplicate slug', function () {
+    Client::factory()->create(['slug' => 'acme-builders']);
+
+    $response = $this->postJson('/api/clients', [
+        'name' => 'Acme Builders',
+        'domain' => 'https://acmebuilders.com',
+        'slug' => 'acme-builders',
+    ], ['Authorization' => 'Bearer test-token']);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors('slug');
+});
+
+it('strips trailing slash from domain on creation', function () {
+    $response = $this->postJson('/api/clients', [
+        'name' => 'Slash Test',
+        'domain' => 'https://example.com/',
+    ], ['Authorization' => 'Bearer test-token']);
+
+    $response->assertStatus(201);
+    $this->assertDatabaseHas('clients', ['domain' => 'https://example.com']);
+});
+
+it('bulk imports multiple clients', function () {
+    $response = $this->postJson('/api/clients/import', [
+        'clients' => [
+            ['name' => 'Client A', 'domain' => 'https://client-a.com'],
+            ['name' => 'Client B', 'domain' => 'https://client-b.com'],
+            ['name' => 'Client C', 'domain' => 'https://client-c.com'],
+        ],
+    ], ['Authorization' => 'Bearer test-token']);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('message', '3 client(s) created, 0 skipped (duplicate slug).');
+
+    $this->assertDatabaseCount('clients', 3);
+});
+
+it('skips duplicate slugs during import', function () {
+    Client::factory()->create(['slug' => 'client-a']);
+
+    $response = $this->postJson('/api/clients/import', [
+        'clients' => [
+            ['name' => 'Client A', 'domain' => 'https://client-a.com'],
+            ['name' => 'Client B', 'domain' => 'https://client-b.com'],
+        ],
+    ], ['Authorization' => 'Bearer test-token']);
+
+    $response->assertStatus(201)
+        ->assertJsonPath('message', '1 client(s) created, 1 skipped (duplicate slug).')
+        ->assertJsonPath('skipped_slugs.0', 'client-a');
+});
+
 it('dispatches a crawl job for a client', function () {
     $client = Client::factory()->create();
 

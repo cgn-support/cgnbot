@@ -10,6 +10,8 @@ Route::middleware(AuthenticateApiToken::class)->group(function () {
     Route::get('/clients', [ClientsController::class, 'index'])->name('api.clients.index');
     Route::get('/clients/{client}', [ClientsController::class, 'show'])->name('api.clients.show');
     Route::get('/clients/{client}/issues', [ClientsController::class, 'issues'])->name('api.clients.issues');
+    Route::post('/clients', [ClientsController::class, 'store'])->name('api.clients.store');
+    Route::post('/clients/import', [ClientsController::class, 'import'])->name('api.clients.import');
     Route::post('/clients/{client}/crawl', [ClientsController::class, 'crawl'])->name('api.clients.crawl');
 
     Route::get('/issues', [IssuesController::class, 'index'])->name('api.issues.index');
